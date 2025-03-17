@@ -1,6 +1,6 @@
-#R script f
+#R script
 #Brief Experiment Background: 
-#n=3 +50 year olds and n=3 +85 year olds (MASS_Pilot study)  
+#n=3 <66 year olds (HC) and n=3 85 year olds (OLD) (MASS_Pilot study)  
 #PBMCs were subjected to BD Rhapsody single-cell RNA seq.
 ###############################################################################
 
@@ -41,7 +41,7 @@ library(enrichplot)
 library(ggplot2)
 library(data.table)
 
-#Data import
+#Data import from multiple cartridges 
 expMat_C1 <- ReadMtx(mtx = "C1 matrix.mtx", cells = "C1 barcodes.tsv", features = "C1 features.tsv",
                      cell.column = 1, feature.column = 2,
                      cell.sep = "\t", feature.sep = "\t",
@@ -97,17 +97,45 @@ smk_C3[1:5,]
 rna_C3 <- AddMetaData(object = rna_C3, metadata = smk_C3)
 rna_C3@meta.data %>% head()
 
-#Identifying samples
-Idents(rna_C3) <- rna_C3@meta.data$Sample_Name
-Healthy_C3 <- subset(rna_C3, idents = "HC3")
-OLD_C3 <- subset(rna_C3, idents = "OLD3")
+expMat_C4 <- ReadMtx(mtx = "C4 matrix.mtx", cells = "C4 barcodes.tsv", features = "C4 features.tsv",
+                     cell.column = 1, feature.column = 2,
+                     cell.sep = "\t", feature.sep = "\t",
+                     skip.cell = 0, skip.feature = 0,
+                     mtx.transpose = FALSE, unique.features = TRUE)
 
-Healthy_C3$Sample_Name <- "HC"
-Healthy_C2$Sample_Name <- "HC"
-Healthy_C1$Sample_Name <- "HC"
-OLD_C1$Sample_Name <- "OLD"
-OLD_C2$Sample_Name <- "OLD"
-OLD_C3$Sample_Name <- "OLD"
+expMat_C4[1:5,1:5]
+rna_C4 <- Seurat::CreateSeuratObject(counts = expMat_C4,
+                                     min.cells = 0, min.features = 0, assay = "RNA")
+rna_C4@meta.data %>% head()
+
+smk_C4 <- fread(file = "C4 sample tag.csv", sep = ",", header = TRUE) %>%
+  data.frame(row.names = 1)
+
+smk_C4[1:5,]
+
+rna_C4 <- AddMetaData(object = rna_C4, metadata = smk_C4)
+rna_C4@meta.data %>% head()
+
+Idents(rna_C1) <- rna_C1@meta.data$Sample_Name
+Idents(rna_C2) <- rna_C2@meta.data$Sample_Name
+Idents(rna_C3) <- rna_C3@meta.data$Sample_Name
+Idents(rna_C4) <- rna_C4@meta.data$Sample_Name
+
+#Identifying samples
+Old_1 <- subset(rna_C4, idents = "OLD1")
+Old_2 <- subset(rna_C4, idents = "OLD2")
+Old_3 <- subset(rna_C4, idents = "OLD3")
+Healthy_1 <- subset(rna_C1, idents = "HC1")
+Healthy_2 <- subset(rna_C2, idents = "HC2")
+Healthy_3 <- subset(rna_C3, idents = "HC3")
+
+# relabelling the samples
+Old_1$Sample_Name <- "OLD"
+Old_2$Sample_Name <- "OLD"
+Old_3$Sample_Name <- "OLD"
+Healthy_1$Sample_Name <- "HC"
+Healthy_2$Sample_Name <- "HC"
+Healthy_3$Sample_Name <- "HC"
 
 AGEHC <- merge(Healthy_C1, y = c(Healthy_C2, Healthy_C3, OLD_C1, OLD_C2, OLD_C3),
                add.cell.ids = c("HC1", "HC2", "HC3", "OLD1", "OLD2", "OLD3"))
@@ -194,7 +222,6 @@ filtered.AGEHC@meta.data %>%
   facet_wrap(~Sample_Name) +
   theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))
 
-
 # Cell Number
 AGEHC@meta.data %>% 
   group_by(Sample_Name) %>% 
@@ -209,7 +236,7 @@ filtered.AGEHC <- NormalizeData(filtered.AGEHC,
                                 normalization.method = "LogNormalize")
 
 
-# split the dataset into a list of two seurat objects (+50 and +85)
+# split the dataset into a list of two seurat objects (<66 and 85)
 split.filtered.AGEHC <- SplitObject(filtered.AGEHC, split.by = "Sample_Name")
 
 # normalize and identify variable features for each dataset independently
@@ -366,11 +393,11 @@ for(j in unique(sctype_scores$cluster)){
 
 integrate.filtered.AGEHC$celltypes <- integrate.filtered.AGEHC$customclassif
 
-# (Fig. 1A+B)
+# (Fig. 1a-b)
 DimPlot(integrate.filtered.AGEHC, reduction = "umap", label = TRUE, repel = TRUE, group.by = 'customclassif') + NoLegend()
 DimPlot(integrate.filtered.AGEHC, group.by = "customclassif", Split.by = "Sample_Name")
 
-# Frequency of cell types per sample (Fig.1C)
+# Frequency of cell types per sample (Fig.1c)
 library(Seurat)
 library(ggplot2)
 
@@ -389,7 +416,7 @@ ggplot(integrate.filtered.AGEHC.df, aes(x = celltype.tag, y = Freq_Percentage, f
   theme_minimal() +
   theme(axis.text.x = element_text(angle = 45, hjust = 1))
 
-# Feature Plot UMAP expression (Fig. 1F)
+# Feature Plot UMAP expression (Fig. 1f)
 FeaturePlot(integrate.filtered.AGEHC, 
             reduction = "umap", 
             features = c("FOXP3"), 
@@ -408,7 +435,7 @@ Treg.de <- FindMarkers(JoinLayers(noabseq),
                           ident.2 = "HC_Tregs", 
                           verbose = FALSE)
 
-# (Fig. 2A)
+# (Fig. 2a)
 Treg.de$diffexpressed <- "No Changed"
 Treg.de$diffexpressed[Treg.de$avg_log2FC > 1 & Treg.de$p_val < 0.05] <- "Upregulated"
 Treg.de$diffexpressed[Treg.de$avg_log2FC < -1 & Treg.de$p_val < 0.05] <- "Downregulated"
@@ -427,7 +454,7 @@ ggplot(data=Treg.de, aes(x=avg_log2FC, y=-log10(p_val), col=diffexpressed, label
   geom_hline(yintercept=-log10(0.05), col="black") +
   theme(text = element_text(size = 6))
 
-# Violin plots (Fig. 2C)
+# Violin plots (Fig. 2c)
 Idents(integrate.filtered.AGEHC) <- integrate.filtered.AGEHC@meta.data$celltype.name
 VlnPlot(object = integrate.filtered.AGEHC,
         features = "TIGIT", 
@@ -435,14 +462,14 @@ VlnPlot(object = integrate.filtered.AGEHC,
         log = T) + 
   stat_compare_means(comparisons = list(c("HC_Tregs", "OLD_Tregs")))
 
-# Violin plots (Fig. S1B-E)
+# Violin plots (Fig. S1b-e)
 Idents(object = integrate.filtered.AGEHC) <- "celltypes"
 VlnPlot(object = integrate.filtered.AGEHC, 
         features = c("TNFRSF13C","TNFRSF17","TNFRSF25","TNFRSF4","TNFRSF8","TNFRSF9","TNFSF10","TNFSF13","TNFSF13B","TNFSF14","TNFSF8"),
         stack = T, flip = T)
 
 
-# GO Enrichment Analysis (Fig. 2D, S5A)
+# GO Enrichment Analysis (Fig. 2d, S5a)
 BiocManager::install("org.Hs.eg.db")
 BiocManager::install("clusterProfiler")
 BiocManager::install("gseaplot2")
@@ -483,7 +510,7 @@ egotregs <- enrichGO(gene = Treg.de.sig$entrezgene_id,
 ego.tabletregs <- as.data.frame(egotregs)
 barplot(egotregs, showCategory=10)
 
-#GSEA (Fig. 2E, 6C)
+#GSEA (Fig. 2e, 6c)
 Treg.de <- Treg.de[order(-Treg.de$avg_log2FC), ]
 
 gene_list <- Treg.de2$avg_log2FC
@@ -502,7 +529,7 @@ gse.tabletregs <- as.data.frame(gsetregs) %>%
   mutate(geneSetID = 1:dim(.)[1])
 gseaplot2(gsetregs, geneSetID = c(16,15,10,8))
 
-# Box Plot  (Fig. 6B)
+# Box Plot  (Fig. 6b)
 library(Seurat)
 library(ggplot2)
 library(dplyr)
@@ -518,7 +545,7 @@ ggplot(data_subset, aes(x = group, y = KLRB1, fill = group)) +
   stat_compare_means(comparisons = list(c("HC_CD8 CD56+ T cells", "OLD_CD8 CD56+ T cells")))  
 
 
-# Cell Chat analysis (Fig 5-6, S3-5)
+# Cell Chat analysis (Fig 4-6, S3-5)
 devtools::install_github("sqjin/CellChat")
 BiocManager::install("ComplexHeatmap")
 BiocManager::install("BiocNeighbors")
@@ -544,13 +571,13 @@ library(biomaRt)
 library(enrichplot)
 library(ggplot2)
 
-# Cell Chat object +50
+# Cell Chat object <66 years
 Idents(integrate.filtered.AGEHC) <- "Sample_Name"
 seurat_objectHC <- subset(integrate.filtered.AGEHC, idents = c("HC"))
 data.inputHC <-GetAssayData(JoinLayers(seurat_objectHC, assay ="RNA", slot = "data"))
 metaHC <- data.frame(group = seurat_objectHC$customclassif, row.names = names(labels))
 cellchatHC <- createCellChat(object = data.inputHC, meta =  metaHC, group.by = "group")
-# Cell Chat object +85
+# Cell Chat object 85 years
 seurat_objectOLD <- subset(integrate.filtered.AGEHC, idents = c("OLD"))
 data.inputOLD <-GetAssayData(JoinLayers(seurat_objectOLD, assay ="RNA", slot = "data"))
 metaOLD <- data.frame(group = seurat_objectOLD$customclassif, row.names = names(labels))
@@ -618,7 +645,7 @@ extractEnrichedLR(cellchatHC, signaling = c(cellchatHC@netP[["pathways"]]),
                   geneLR.return = TRUE)
 extractEnrichedLR(cellchatOLD, signaling = c(cellchatOLD@netP[["pathways"]]),
                   geneLR.return = TRUE)
-# Visualisation of cell-cell communication network circle diagram for +85, repeat for +50 (Fig 4A-B, Fig 6D)
+# Visualisation of cell-cell communication network circle diagram for 85, repeat for <66 (Fig 4a-b, Fig 6d)
 groupSize <-as.numeric(table(cellchatOLD@idents))
 par(mfrow = c(1,2), xpd=TRUE)
 netVisual_circle(cellchatOLD@net$count, vertex.weight = groupSize,
@@ -636,7 +663,7 @@ for (i in 1:nrow(mat)) {
   netVisual_circle(mat2, vertex.weight = groupSize, weight.scale = T,
                    edge.weight.max = max(mat), title.name = rownames(mat)[i])}
 
-#Chord diagram: define source and target cell types chord ##### (Fig 4C-D)
+#Chord diagram: define source and target cell types chord ##### (Fig 4c-d)
 netVisual_chord_gene(cellchatOLD, sources.use = c(1,2,3,4,5,6,7,8,9,10,11,12,13,14,15), targets.use = c(16),
                      lab.cex = 0.5, legend.pos.x = 15)
 netVisual_chord_gene(cellchatOLD, sources.use = c(16), targets.use = c(1,2,3,4,5,6,7,8,9,10,11,12,13,14,15),
@@ -669,7 +696,7 @@ netAnalysis_signalingRole_heatmap(cellchatOLD, pattern = "incoming", height = 11
 # Identify and visualise outgoing/incoming communication pattern of secreting cells
 library(ggalluvial)
 
-# +50
+# <66 years HC
 selectK(cellchatHC, pattern = "outgoing")
 nPatterns = 4
 cellchatHC <- identifyCommunicationPatterns(cellchatHC, pattern = "outgoing",
@@ -680,7 +707,7 @@ nPatterns = 2
 cellchatHC <- identifyCommunicationPatterns(cellchatHC, pattern = "incoming",
                                             k = nPatterns, width = 5, height = 9)
 
-# +85
+# 85 years OLD
 selectK(cellchatOLD, pattern = "outgoing")
 nPatterns = 8
 cellchatOLD<- identifyCommunicationPatterns(cellchatOLD, pattern = "outgoing",
