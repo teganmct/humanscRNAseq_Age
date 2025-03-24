@@ -11,7 +11,7 @@
 - [Issues](https://github.com/ebridge2/lol/issues)
 
 # Overview
-BD rhapsody Single cell RNA sequencing study on human peripheral blood mononuclear cells from +50 year olds and +85 year olds 
+BD rhapsody Single cell RNA sequencing study on human peripheral blood mononuclear cells from <66 year olds and 85 year olds 
 
 # Repo Contents
 
@@ -64,4 +64,4 @@ If you are having an issue that you believe to be tied to software versioning is
 Demo files include a test run of BD Rhapsody single-cell RNA analysis bootcamp
 
 # Results
-In this study, we analysed the differences in regulatory T cells (Tregs) between +50 year old and +85 year old individuals.
+In this study, we analysed the differences in regulatory T cells (Tregs) between <66 year old and 85 year old individuals.
